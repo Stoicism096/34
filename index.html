@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交通指挥员游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            overflow: hidden;
+            padding: 20px;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 360px;
+            height: 640px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            background: #0c1b33;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(12, 27, 51, 0.9);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+        
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.7);
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #e0f7fa;
+        }
+        
+        .instructions {
+            background: rgba(25, 50, 100, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            max-width: 320px;
+            text-align: left;
+            border: 2px solid #3f72af;
+        }
+        
+        .instructions h3 {
+            color: #81d4fa;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            padding: 0 10px;
+        }
+        
+        .instructions li {
+            margin: 12px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 16px;
+        }
+        
+        .instructions li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #4fc3f7;
+            font-size: 20px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #2196f3, #0d47a1);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(13, 71, 161, 0.4);
+            pointer-events: auto;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(13, 71, 161, 0.6);
+            background: linear-gradient(135deg, #29b6f6, #1565c0);
+        }
+        
+        .level-info {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 18px;
+            color: white;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+            z-index: 5;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: calc(100% - 40px);
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00c853, #64dd17);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        
+        .level-complete {
+            font-size: 60px;
+            font-weight: bold;
+            color: #ffd600;
+            text-shadow: 0 0 15px rgba(255, 214, 0, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .game-complete {
+            font-size: 50px;
+            font-weight: bold;
+            color: #76ff03;
+            text-shadow: 0 0 15px rgba(118, 255, 3, 0.7);
+            margin-bottom: 20px;
+            animation: glow 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px rgba(118, 255, 3, 0.7); }
+            50% { text-shadow: 0 0 25px rgba(118, 255, 3, 1); }
+            100% { text-shadow: 0 0 10px rgba(118, 255, 3, 0.7); }
+        }
+        
+        .difficulty-text {
+            font-size: 40px;
+            color: #ff6d00;
+            text-shadow: 0 0 10px rgba(255, 109, 0, 0.7);
+            margin-top: 20px;
+            animation: zoomInOut 2s;
+        }
+        
+        @keyframes zoomInOut {
+            0% { transform: scale(0.1); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .final-score {
+            font-size: 28px;
+            color: #e0f7fa;
+            margin: 20px 0;
+            background: rgba(0, 100, 200, 0.3);
+            padding: 10px 30px;
+            border-radius: 10px;
+            border: 1px solid #29b6f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="360" height="640"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="level-info">
+                <div class="score">分数: <span id="score">0</span></div>
+                <div class="level">关卡: <span id="level">1</span>/5</div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            
+            <div class="screen" id="startScreen">
+                <h1 class="title">交通指挥员</h1>
+                <div class="subtitle">挑战你的反应速度和多任务处理能力</div>
+                
+                <div class="instructions">
+                    <h3>游戏说明</h3>
+                    <ul>
+                        <li>点击屏幕上出现的车辆使其消失</li>
+                        <li>防止交通堵塞，保持道路畅通</li>
+                        <li>每关需要在限定时间内完成</li>
+                        <li>车辆等级越高，得分越多</li>
+                        <li>完成全部5个关卡获得胜利</li>
+                    </ul>
+                </div>
+                
+                <button id="startButton">开始游戏</button>
+            </div>
+            
+            <div class="screen" id="levelCompleteScreen" style="display: none;">
+                <div class="level-complete">关卡完成!</div>
+                <div class="difficulty-text">难度飙升!</div>
+            </div>
+            
+            <div class="screen" id="gameCompleteScreen" style="display: none;">
+                <div class="game-complete">游戏胜利!</div>
+                <div class="final-score">最终得分: <span id="finalScore">0</span></div>
+                <button id="restartButton">返回第一关</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏常量
+        const SCREEN_WIDTH = 360;
+        const SCREEN_HEIGHT = 640;
+        const CAR_SIZE = 40;
+        const CAR_SPEED_MIN = 1.5;
+        const CAR_SPEED_MAX = 3.5;
+        const CAR_SPAWN_RATE = 1.0;
+        const MAX_CARS = 8;
+        const LEVEL_TIME = 30; // 每关时间（秒）
+        const LEVELS = 5;
+
+        // 颜色定义
+        const BACKGROUND = [20, 30, 60];
+        const ROAD_COLOR = [50, 50, 60];
+        const ROAD_MARKING = [200, 200, 200];
+        const CAR_COLORS = [
+            [220, 60, 60],    // 红色
+            [60, 150, 220],   // 蓝色
+            [60, 220, 150],   // 绿色
+            [220, 180, 60],   // 黄色
+            [180, 100, 220],  // 紫色
+        ];
+        const UI_BG = [30, 40, 80, 0.8];
+        const UI_BORDER = [80, 120, 200];
+        const TEXT_COLOR = [240, 240, 240];
+        const HIGHLIGHT = [255, 220, 80];
+        const PROGRESS_COLOR = [80, 180, 100];
+        const PROGRESS_BG = [40, 50, 70];
+
+        // 游戏状态
+        let gameState = {
+            level: 1,
+            score: 0,
+            cars: [],
+            lastSpawnTime: 0,
+            gameTime: 0,
+            levelCompleteTime: 0,
+            showLevelComplete: false,
+            gameComplete: false,
+            gameActive: false
+        };
+
+        // DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+        const gameCompleteScreen = document.getElementById('gameCompleteScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const progressElement = document.getElementById('progress');
+        const finalScoreElement = document.getElementById('finalScore');
+
+        // 初始化游戏
+        function initGame() {
+            gameState = {
+                level: 1,
+                score: 0,
+                cars: [],
+                lastSpawnTime: 0,
+                gameTime: 0,
+                levelCompleteTime: 0,
+                showLevelComplete: false,
+                gameComplete: false,
+                gameActive: false
+            };
+            
+            scoreElement.textContent = '0';
+            levelElement.textContent = '1';
+            progressElement.style.width = '0%';
+            
+            startScreen.style.display = 'flex';
+            levelCompleteScreen.style.display = 'none';
+            gameCompleteScreen.style.display = 'none';
+        }
+
+        // 车辆类
+        class Car {
+            constructor(lane, speed, level) {
+                this.lane = lane;
+                this.speed = speed;
+                this.size = CAR_SIZE;
+                this.color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+                this.x = 0;
+                this.y = 0;
+                this.direction = Math.random() > 0.5 ? -1 : 1;
+                this.angle = 0;
+                this.active = true;
+                this.level = level;
+                
+                // 根据车道设置初始位置
+                if (lane === 0) {  // 上
+                    this.x = SCREEN_WIDTH / 2;
+                    this.y = -this.size;
+                    this.angle = 90;
+                } else if (lane === 1) {  // 右
+                    this.x = SCREEN_WIDTH + this.size;
+                    this.y = SCREEN_HEIGHT / 2;
+                    this.angle = 180;
+                } else if (lane === 2) {  // 下
+                    this.x = SCREEN_WIDTH / 2;
+                    this.y = SCREEN_HEIGHT + this.size;
+                    this.angle = 270;
+                } else if (lane === 3) {  // 左
+                    this.x = -this.size;
+                    this.y = SCREEN_HEIGHT / 2;
+                    this.angle = 0;
+                }
+            }
+            
+            update() {
+                // 根据车道和方向移动车辆
+                if (this.lane === 0) {  // 上
+                    this.y += this.speed * this.direction;
+                    if (this.direction === 1 && this.y > SCREEN_HEIGHT / 2 + 60) {
+                        this.active = false;
+                    }
+                } else if (this.lane === 1) {  // 右
+                    this.x -= this.speed * this.direction;
+                    if (this.direction === -1 && this.x < SCREEN_WIDTH / 2 - 60) {
+                        this.active = false;
+                    }
+                } else if (this.lane === 2) {  // 下
+                    this.y -= this.speed * this.direction;
+                    if (this.direction === -1 && this.y < SCREEN_HEIGHT / 2 - 60) {
+                        this.active = false;
+                    }
+                } else if (this.lane === 3) {  // 左
+                    this.x += this.speed * this.direction;
+                    if (this.direction === 1 && this.x > SCREEN_WIDTH / 2 + 60) {
+                        this.active = false;
+                    }
+                }
+            }
+            
+            draw(ctx) {
+                // 保存当前画布状态
+                ctx.save();
+                
+                // 移动到车辆中心点并旋转
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle * Math.PI / 180);
+                
+                // 绘制车辆主体
+                ctx.fillStyle = `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+                ctx.beginPath();
+                ctx.roundRect(-this.size/2, -this.size/2, this.size, this.size, 8);
+                ctx.fill();
+                
+                // 绘制车窗
+                ctx.fillStyle = 'rgb(30, 30, 30)';
+                ctx.beginPath();
+                ctx.roundRect(-this.size/2 + 5, -this.size/2 + 5, this.size - 10, this.size - 10, 4);
+                ctx.fill();
+                
+                // 绘制车灯
+                ctx.fillStyle = 'rgb(240, 240, 240)';
+                ctx.fillRect(-this.size/2 + 10, -this.size/2 + 10, 8, 8);
+                ctx.fillRect(this.size/2 - 18, -this.size/2 + 10, 8, 8);
+                ctx.fillRect(-this.size/2 + 10, this.size/2 - 18, 8, 8);
+                ctx.fillRect(this.size/2 - 18, this.size/2 - 18, 8, 8);
+                
+                // 绘制车辆等级
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`L${this.level}`, 0, 0);
+                
+                // 恢复画布状态
+                ctx.restore();
+            }
+            
+            isClicked(x, y) {
+                // 检查点击位置是否在车辆上
+                const distance = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2);
+                return distance < this.size / 1.5;
+            }
+        }
+
+        // 绘制道路
+        function drawRoads() {
+            // 绘制横向道路
+            ctx.fillStyle = `rgb(${ROAD_COLOR[0]}, ${ROAD_COLOR[1]}, ${ROAD_COLOR[2]})`;
+            ctx.fillRect(40, SCREEN_HEIGHT/2 - 140, SCREEN_WIDTH - 80, 280);
+            
+            // 绘制纵向道路
+            ctx.fillRect(SCREEN_WIDTH/2 - 140, 40, 280, SCREEN_HEIGHT - 80);
+            
+            // 绘制道路标记
+            ctx.fillStyle = `rgb(${ROAD_MARKING[0]}, ${ROAD_MARKING[1]}, ${ROAD_MARKING[2]})`;
+            for (let i = 0; i < 10; i++) {
+                const offset = (gameState.gameTime / 2) % 40;
+                // 纵向标记
+                ctx.fillRect(SCREEN_WIDTH/2 - 5, 40 + offset + i*80, 10, 40);
+                // 横向标记
+                ctx.fillRect(40 + offset + i*80, SCREEN_HEIGHT/2 - 5, 40, 10);
+            }
+            
+            // 绘制中心环岛
+            ctx.fillStyle = 'rgb(40, 50, 70)';
+            ctx.beginPath();
+            ctx.arc(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'rgb(60, 70, 100)';
+            ctx.beginPath();
+            ctx.arc(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'rgb(80, 90, 130)';
+            ctx.beginPath();
+            ctx.arc(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 绘制星空背景
+        function drawStars() {
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * SCREEN_WIDTH;
+                const y = Math.random() * SCREEN_HEIGHT;
+                const size = Math.random() * 2;
+                const alpha = Math.random() * 0.8 + 0.2;
+                
+                ctx.fillStyle = `rgba(200, 200, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 绘制UI
+        function drawUI() {
+            // 绘制分数和关卡背景
+            ctx.fillStyle = `rgba(${UI_BG[0]}, ${UI_BG[1]}, ${UI_BG[2]}, ${UI_BG[3]})`;
+            ctx.beginPath();
+            ctx.roundRect(10, 10, SCREEN_WIDTH - 20, 60, 10);
+            ctx.fill();
+            
+            ctx.strokeStyle = `rgb(${UI_BORDER[0]}, ${UI_BORDER[1]}, ${UI_BORDER[2]})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 绘制分数
+            ctx.fillStyle = `rgb(${TEXT_COLOR[0]}, ${TEXT_COLOR[1]}, ${TEXT_COLOR[2]})`;
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`分数: ${gameState.score}`, 20, 25);
+            
+            // 绘制关卡
+            ctx.fillStyle = `rgb(${HIGHLIGHT[0]}, ${HIGHLIGHT[1]}, ${HIGHLIGHT[2]})`;
+            ctx.textAlign = 'right';
+            ctx.fillText(`关卡: ${gameState.level}/${LEVELS}`, SCREEN_WIDTH - 20, 25);
+            
+            // 绘制进度条背景
+            ctx.fillStyle = `rgba(${PROGRESS_BG[0]}, ${PROGRESS_BG[1]}, ${PROGRESS_BG[2]}, 0.5)`;
+            ctx.beginPath();
+            ctx.roundRect(20, SCREEN_HEIGHT - 40, SCREEN_WIDTH - 40, 20, 10);
+            ctx.fill();
+            
+            // 绘制进度条
+            if (gameState.gameActive) {
+                const progress = Math.min(1.0, gameState.gameTime / (LEVEL_TIME * 60));
+                const progressWidth = (SCREEN_WIDTH - 40) * progress;
+                
+                ctx.fillStyle = `rgb(${PROGRESS_COLOR[0]}, ${PROGRESS_COLOR[1]}, ${PROGRESS_COLOR[2]})`;
+                ctx.beginPath();
+                ctx.roundRect(20, SCREEN_HEIGHT - 40, progressWidth, 20, 10);
+                ctx.fill();
+            }
+        }
+
+        // 生成新车辆
+        function spawnCar(currentTime) {
+            if (gameState.cars.length < MAX_CARS && 
+                Math.random() < CAR_SPAWN_RATE * (gameState.level * 0.3)) {
+                const lane = Math.floor(Math.random() * 4);
+                const speed = CAR_SPEED_MIN + (CAR_SPEED_MAX - CAR_SPEED_MIN) * (gameState.level / LEVELS);
+                gameState.cars.push(new Car(lane, speed, gameState.level));
+                gameState.lastSpawnTime = currentTime;
+            }
+        }
+
+        // 更新游戏状态
+        function updateGame() {
+            if (!gameState.gameActive) return;
+            
+            gameState.gameTime++;
+            
+            // 生成新车辆
+            spawnCar(Date.now());
+            
+            // 更新车辆位置
+            for (let i = gameState.cars.length - 1; i >= 0; i--) {
+                const car = gameState.cars[i];
+                car.update();
+                
+                if (!car.active) {
+                    gameState.cars.splice(i, 1);
+                }
+            }
+            
+            // 检查关卡是否完成
+            if (gameState.gameTime >= LEVEL_TIME * 60) {
+                if (gameState.level < LEVELS) {
+                    gameState.showLevelComplete = true;
+                    gameState.levelCompleteTime = Date.now();
+                    gameState.gameActive = false;
+                    
+                    // 显示关卡完成界面
+                    levelCompleteScreen.style.display = 'flex';
+                    setTimeout(() => {
+                        // 进入下一关
+                        gameState.level++;
+                        gameState.cars = [];
+                        gameState.gameActive = true;
+                        gameState.showLevelComplete = false;
+                        gameState.gameTime = 0;
+                        
+                        // 更新UI
+                        levelElement.textContent = gameState.level;
+                        levelCompleteScreen.style.display = 'none';
+                    }, 2000);
+                } else {
+                    // 游戏通关
+                    gameState.gameComplete = true;
+                    gameState.gameActive = false;
+                    
+                    // 显示游戏通关界面
+                    gameCompleteScreen.style.display = 'flex';
+                    finalScoreElement.textContent = gameState.score;
+                }
+            }
+        }
+
+        // 绘制游戏
+        function drawGame() {
+            // 清除画布
+            ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            
+            // 绘制背景
+            ctx.fillStyle = `rgb(${BACKGROUND[0]}, ${BACKGROUND[1]}, ${BACKGROUND[2]})`;
+            ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            
+            // 绘制星空
+            drawStars();
+            
+            // 绘制道路
+            drawRoads();
+            
+            // 绘制车辆
+            gameState.cars.forEach(car => car.draw(ctx));
+            
+            // 绘制UI
+            drawUI();
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 事件监听
+        canvas.addEventListener('click', (e) => {
+            if (!gameState.gameActive) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 检查是否点击了车辆
+            for (let i = gameState.cars.length - 1; i >= 0; i--) {
+                const car = gameState.cars[i];
+                if (car.isClicked(x, y)) {
+                    gameState.score += car.level * 10;
+                    scoreElement.textContent = gameState.score;
+                    gameState.cars.splice(i, 1);
+                    break;
+                }
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            gameState.gameActive = true;
+            startScreen.style.display = 'none';
+        });
+
+        restartButton.addEventListener('click', () => {
+            initGame();
+        });
+
+        // 添加圆角矩形方法
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+            if (width < 2 * radius) radius = width / 2;
+            if (height < 2 * radius) radius = height / 2;
+            
+            this.beginPath();
+            this.moveTo(x + radius, y);
+            this.arcTo(x + width, y, x + width, y + height, radius);
+            this.arcTo(x + width, y + height, x, y + height, radius);
+            this.arcTo(x, y + height, x, y, radius);
+            this.arcTo(x, y, x + width, y, radius);
+            this.closePath();
+            return this;
+        };
+
+        // 初始化游戏
+        initGame();
+        
+        // 启动游戏循环
+        gameLoop();
+    </script>
+</body>
+</html>
